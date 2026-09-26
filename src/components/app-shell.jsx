@@ -1,5 +1,6 @@
 import { Link, useSegments, useRouter } from "../lib/router";
 import { useAuth } from "../lib/session";
+import { useTheme } from "../lib/theme";
 import { Avatar } from "./ui";
 import {
   IconHome,
@@ -74,6 +75,25 @@ function NavLink({ item, onNavigate, layout }) {
   );
 }
 
+function ThemeToggle({ className }) {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      className={cn(
+        "flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-surface-850 hover:text-zinc-200",
+        className
+      )}
+    >
+      <span className="text-base">{theme === "dark" ? "☀️" : "🌙"}</span>
+      <span className="hidden lg:inline">{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+    </button>
+  );
+}
+
 export function AppShell({ children }) {
   const { user, signOut } = useAuth();
   const { navigate } = useRouter();
@@ -105,6 +125,7 @@ export function AppShell({ children }) {
           ))}
         </nav>
         <div className="mt-4 space-y-1 border-t border-line-700 pt-3">
+          <ThemeToggle />
           <Link
             to="/settings"
             aria-current={segment === "settings" ? "page" : undefined}
@@ -152,6 +173,7 @@ export function AppShell({ children }) {
           <BrandMark />
         </Link>
         <div className="flex items-center gap-1">
+          <ThemeToggle className="px-2 py-2" />
           <Link
             to="/settings"
             className="rounded-lg p-2 text-zinc-400 transition hover:bg-surface-800 hover:text-zinc-100"

@@ -158,6 +158,98 @@ export const search = query({
   },
 });
 
+/** Suggested creators — People you might like based on mutual follows and engagement */
+export const suggestedCreators = query({
+  args: { token: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, { token, limit }) => {
+    const viewer = await requireUser(ctx, token);
+    const max = Math.min(Math.max(limit ?? 10, 1), 20);
+
+    // Get who viewer follows
+    const following = await ctx.db
+      .query("follows")
+      .withIndex("by_follower_following", (q) => q.eq("followerId", viewer._id))
+      .collect();
+    const followingIds = new Set(following.map((f) => f.followingId));
+    followingIds.add(viewer._id); // exclude self
+
+    // Collect candidates: people followed by people you follow (mutual follows)
+    const candidateScores = new Map(); // userId -> score
+
+    for (const follow of following.slice(0, 50)) {
+      // Who do the people you follow follow?
+      const theirFollowing = await ctx.db
+        .query("follows")
+        .withIndex("by_follower_following", (q) => q.eq("followerId", follow.followingId))
+        .take(30);
+      for (const tf of theirFollowing) {
+        if (followingIds.has(tf.followingId)) continue;
+        const current = candidateScores.get(tf.followingId) ?? 0;
+        candidateScores.set(tf.followingId, current + 2); // mutual follow weight
+      }
+      // Also get their followers who might be popular
+      const theirFollowers = await ctx.db
+        .query("follows")
+        .withIndex("by_following_follower", (q) => q.eq("followingId", follow.followingId))
+        .take(20);
+      for (const tf of theirFollowers) {
+        if (followingIds.has(tf.followerId)) continue;
+        const current = candidateScores.get(tf.followerId) ?? 0;
+        candidateScores.set(tf.followerId, current + 1);
+      }
+    }
+
+    // If not enough candidates, fill with popular creators (most followers)
+    if (candidateScores.size < max) {
+      const allUsers = await ctx.db
+        .query("users")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .take(100);
+      for (const u of allUsers) {
+        if (followingIds.has(u._id)) continue;
+        if (candidateScores.has(u._id)) continue;
+        // Score by followerCount + videoCount
+        const score = (u.followerCount ?? 0) * 0.1 + (u.videoCount ?? 0) * 0.5;
+        if (score > 0) candidateScores.set(u._id, (candidateScores.get(u._id) ?? 0) + score * 0.1);
+      }
+    }
+
+    // Sort by score
+    const sorted = [...candidateScores.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, max)
+      .map(([id]) => id);
+
+    const users = [];
+    for (const id of sorted) {
+      const user = await ctx.db.get(id);
+      if (!user || user.status !== "active") continue;
+      let avatarUrl = null;
+      if (user.avatarStorageId) {
+        try {
+          avatarUrl = await ctx.storage.getUrl(user.avatarStorageId);
+        } catch {
+          avatarUrl = null;
+        }
+      }
+      const score = candidateScores.get(id) ?? 0;
+      // Reason
+      let reason = "Popular on Anarchos";
+      if (score >= 4) reason = "Followed by people you follow";
+      else if (score >= 2) reason = "Mutual connections";
+      users.push({
+        ...publicUser(user),
+        avatarUrl,
+        isFollowing: false,
+        reason,
+        mutualScore: Math.round(score),
+      });
+    }
+
+    return { users };
+  },
+});
+
 export const listFollowers = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -323,7 +415,19 @@ export const deleteAccount = mutation({
         .query("comments")
         .withIndex("by_video_status_created", (q) => q.eq("videoId", video._id))
         .collect()) {
+        for (const cl of await ctx.db
+          .query("commentLikes")
+          .withIndex("by_comment_user", (q) => q.eq("commentId", comment._id))
+          .collect()) {
+          await ctx.db.delete(cl._id);
+        }
         await ctx.db.delete(comment._id);
+      }
+      for (const view of await ctx.db
+        .query("videoViews")
+        .withIndex("by_video_created", (q) => q.eq("videoId", video._id))
+        .collect()) {
+        await ctx.db.delete(view._id);
       }
       await ctx.db.delete(video._id);
       try {
@@ -337,6 +441,11 @@ export const deleteAccount = mutation({
         } catch {
           /* file already removed */
         }
+      }
+      if (video.captionFileStorageId) {
+        try {
+          await ctx.storage.delete(video.captionFileStorageId);
+        } catch {}
       }
     }
 
@@ -355,6 +464,19 @@ export const deleteAccount = mutation({
       await ctx.db.delete(like._id);
     }
 
+    // Comment likes
+    const myCommentLikes = await ctx.db
+      .query("commentLikes")
+      .withIndex("by_user_created", (q) => q.eq("userId", userId))
+      .collect();
+    for (const cl of myCommentLikes) {
+      const comment = await ctx.db.get(cl.commentId);
+      if (comment) {
+        await ctx.db.patch(comment._id, { likeCount: Math.max(0, (comment.likeCount ?? 1) - 1) });
+      }
+      await ctx.db.delete(cl._id);
+    }
+
     // Comments this account left on other people's videos.
     const myComments = await ctx.db
       .query("comments")
@@ -368,6 +490,14 @@ export const deleteAccount = mutation({
         });
       }
       await ctx.db.delete(comment._id);
+    }
+
+    // Video views
+    for (const view of await ctx.db
+      .query("videoViews")
+      .withIndex("by_user_created", (q) => q.eq("userId", userId))
+      .collect()) {
+      await ctx.db.delete(view._id);
     }
 
     // Follow edges in both directions.
@@ -433,4 +563,3 @@ export const deleteAccount = mutation({
     return { ok: true };
   },
 });
-
