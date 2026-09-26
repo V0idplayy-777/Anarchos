@@ -4,7 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "../lib/session";
 import { useToast } from "../lib/toast";
 import { getErrorMessage } from "../lib/convex";
-import { formatCount, formatDuration } from "../lib/format";
+import { formatCount } from "../lib/format";
 import { Link, useRouter } from "../lib/router";
 import { Avatar, Button, EmptyState } from "../components/ui";
 import { FollowButton } from "../components/user";
@@ -17,58 +17,19 @@ import {
   IconTrash,
   IconVolumeHigh,
   IconVolumeMute,
-  IconCaption,
 } from "../components/icons";
 import { cn } from "../utils/cn";
 
 const PAGE_SIZE = 8;
-const SOUND_PREF_KEY = "anarchos.reels.sound.v1";
-const CAPTION_PREF_KEY = "anarchos.reels.captions.v1";
-
-function getSoundPref() {
-  try {
-    const v = window.localStorage.getItem(SOUND_PREF_KEY);
-    if (v === "muted") return true;
-    if (v === "unmuted") return false;
-  } catch {}
-  return false; // default unmuted? Original default false
-}
-function setSoundPref(muted) {
-  try {
-    window.localStorage.setItem(SOUND_PREF_KEY, muted ? "muted" : "unmuted");
-  } catch {}
-}
-function getCaptionPref() {
-  try {
-    return window.localStorage.getItem(CAPTION_PREF_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-function setCaptionPref(enabled) {
-  try {
-    window.localStorage.setItem(CAPTION_PREF_KEY, enabled ? "true" : "false");
-  } catch {}
-}
 
 export function ReelsPage({ startId }) {
   const { token, user: viewer } = useAuth();
   const scrollerRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [filter, setFilter] = useState("all"); // all | following
 
-  const result = usePaginatedQuery(
-    api.videos.listReels,
-    token
-      ? {
-          token,
-          filter,
-        }
-      : "skip",
-    {
-      initialNumItems: PAGE_SIZE,
-    }
-  );
+  const result = usePaginatedQuery(api.videos.listReels, token ? { token } : "skip", {
+    initialNumItems: PAGE_SIZE,
+  });
 
   const reels = result?.results ?? [];
 
@@ -156,40 +117,14 @@ export function ReelsPage({ startId }) {
 
   if (reels.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 px-6 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setFilter("all")}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium",
-              filter === "all" ? "bg-white text-black" : "bg-white/10 text-white"
-            )}
-          >
-            All Reels
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("following")}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium",
-              filter === "following" ? "bg-white text-black" : "bg-white/10 text-white"
-            )}
-          >
-            Following
-          </button>
-        </div>
+      <div className="flex h-full items-center justify-center px-6 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
         <EmptyState
           icon={<IconReels className="size-5" />}
-          title={filter === "following" ? "No reels from people you follow" : "No reels yet"}
-          description={
-            filter === "following"
-              ? "Follow creators and their reels will appear here."
-              : "Reels are short clips that live on this tab only. Upload one and it will appear here."
-          }
+          title="No reels yet"
+          description="Reels are short clips that live on this tab only. Upload one and it will appear here."
           action={
-            <Link to={filter === "following" ? "/search" : "/upload"}>
-              <Button size="sm">{filter === "following" ? "Find people" : "Upload a reel"}</Button>
+            <Link to="/upload">
+              <Button size="sm">Upload a reel</Button>
             </Link>
           }
         />
@@ -199,30 +134,11 @@ export function ReelsPage({ startId }) {
 
   return (
     <div className="relative h-full bg-black">
-      {/* Filter tabs */}
-      <div className="absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setFilter("all")}
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-medium backdrop-blur transition",
-            filter === "all" ? "bg-white text-black" : "bg-black/40 text-white/70 hover:text-white"
-          )}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("following")}
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-medium backdrop-blur transition",
-            filter === "following" ? "bg-white text-black" : "bg-black/40 text-white/70 hover:text-white"
-          )}
-        >
-          Following
-        </button>
-      </div>
-      <div ref={scrollerRef} className="reels-scroller h-full overflow-y-auto" aria-label="Reels">
+      <div
+        ref={scrollerRef}
+        className="reels-scroller h-full overflow-y-auto"
+        aria-label="Reels"
+      >
         {reels.map((reel, index) => (
           <ReelSlide
             key={reel._id}
@@ -233,7 +149,7 @@ export function ReelsPage({ startId }) {
           />
         ))}
       </div>
-      <p className="pointer-events-none absolute top-12 left-1/2 z-20 hidden -translate-x-1/2 text-[11px] font-medium tracking-wide text-white/50 uppercase lg:block">
+      <p className="pointer-events-none absolute top-3 left-1/2 z-20 hidden -translate-x-1/2 text-[11px] font-medium tracking-wide text-white/50 uppercase lg:block">
         Swipe, scroll or use ↑ ↓
       </p>
     </div>
@@ -245,24 +161,17 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
   const toast = useToast();
   const router = useRouter();
   const videoRef = useRef(null);
-  const progressRef = useRef(null);
   const toggleLike = useMutation(api.videos.toggleLike);
   const deleteVideo = useMutation(api.videos.deleteVideo);
-  const recordView = useMutation(api.videos.recordView);
 
   const [liked, setLiked] = useState(reel.likedByViewer);
   const [likeCount, setLikeCount] = useState(reel.likeCount);
   const [commentCount, setCommentCount] = useState(reel.commentCount);
-  const [muted, setMuted] = useState(() => getSoundPref());
+  const [muted, setMuted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [needsPlaybackGesture, setNeedsPlaybackGesture] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [heartBurst, setHeartBurst] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(reel.durationSeconds ?? 0);
-  const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [captionsEnabled, setCaptionsEnabled] = useState(() => getCaptionPref());
-  const [hasRecordedView, setHasRecordedView] = useState(false);
   const lastTapRef = useRef(0);
 
   useEffect(() => {
@@ -272,20 +181,8 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
   }, [reel.likedByViewer, reel.likeCount, reel.commentCount]);
 
   useEffect(() => {
-    setSoundPref(muted);
-  }, [muted]);
-
-  useEffect(() => {
-    setCaptionPref(captionsEnabled);
-  }, [captionsEnabled]);
-
-  useEffect(() => {
     const video = videoRef.current;
-    if (!active) {
-      setNeedsPlaybackGesture(false);
-      setHasRecordedView(false);
-      setCurrentTime(0);
-    }
+    if (!active) setNeedsPlaybackGesture(false);
     if (!video) return;
     let cancelled = false;
     video.muted = muted;
@@ -297,6 +194,8 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
             if (!cancelled) setNeedsPlaybackGesture(false);
           })
           .catch((error) => {
+            // Browsers may block autoplay with sound. Let the viewer start it;
+            // do not silently switch the reel to muted playback.
             if (!cancelled && error?.name === "NotAllowedError") {
               setNeedsPlaybackGesture(true);
             }
@@ -311,53 +210,13 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
     };
   }, [active, paused, muted, reel.videoUrl]);
 
-  // Track time and record view
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !active) return;
-    const onTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
-      if (!hasRecordedView && video.currentTime >= 2) {
-        setHasRecordedView(true);
-        const fp = `${navigator.userAgent}-${reel._id}`.slice(0, 100);
-        recordView({
-          videoId: reel._id,
-          token: token || undefined,
-          watchTimeSeconds: video.currentTime,
-          completed: video.currentTime / (video.duration || 1) > 0.9,
-          fingerprint: fp,
-        }).catch(() => {});
-      }
-    };
-    const onLoaded = () => {
-      setDuration(video.duration || reel.durationSeconds || 0);
-    };
-    const onEnded = () => {
-      if (token) {
-        recordView({
-          videoId: reel._id,
-          token,
-          watchTimeSeconds: video.duration,
-          completed: true,
-        }).catch(() => {});
-      }
-    };
-    video.addEventListener("timeupdate", onTimeUpdate);
-    video.addEventListener("loadedmetadata", onLoaded);
-    video.addEventListener("ended", onEnded);
-    return () => {
-      video.removeEventListener("timeupdate", onTimeUpdate);
-      video.removeEventListener("loadedmetadata", onLoaded);
-      video.removeEventListener("ended", onEnded);
-    };
-  }, [active, hasRecordedView, reel._id, token, recordView, reel.durationSeconds]);
-
   function playWithSound() {
     const video = videoRef.current;
     if (!video) return;
     video.muted = false;
     setMuted(false);
     setPaused(false);
+    // Call play directly from the user gesture so autoplay restrictions allow sound.
     video.play().then(() => setNeedsPlaybackGesture(false)).catch(() => {
       setNeedsPlaybackGesture(true);
     });
@@ -432,18 +291,7 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
     }, 280);
   }
 
-  function handleSeek(e) {
-    const bar = progressRef.current;
-    const video = videoRef.current;
-    if (!bar || !video || !duration) return;
-    const rect = bar.getBoundingClientRect();
-    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    video.currentTime = pos * duration;
-    setCurrentTime(pos * duration);
-  }
-
   const isOwner = reel.author._id === viewerId;
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <section
@@ -465,11 +313,7 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
           className="h-full w-full object-contain"
           onClick={handleTap}
           onPlaying={() => setNeedsPlaybackGesture(false)}
-        >
-          {reel.captionFileUrl && captionsEnabled ? (
-            <track kind="subtitles" src={reel.captionFileUrl} srcLang="en" label="English" default />
-          ) : null}
-        </video>
+        />
       ) : (
         <div className="h-full w-full bg-surface-900" />
       )}
@@ -506,40 +350,6 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
         </span>
       ) : null}
 
-      {/* Seek bar and duration - always visible when active */}
-      {active && (
-        <div className="absolute inset-x-0 bottom-[88px] z-20 px-4 sm:bottom-[88px]">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] tabular-nums text-white/70">{formatDuration(currentTime)}</span>
-            <div
-              ref={progressRef}
-              onClick={handleSeek}
-              className="group relative flex h-4 flex-1 cursor-pointer items-center"
-            >
-              <div className="h-1 w-full overflow-hidden rounded-full bg-white/20 group-hover:h-1.5">
-                <div className="h-full bg-brand-500" style={{ width: `${progressPercent}%` }} />
-              </div>
-              <div
-                className="absolute size-2.5 -translate-x-1/2 rounded-full bg-white shadow"
-                style={{ left: `${progressPercent}%` }}
-              />
-            </div>
-            <span className="text-[11px] tabular-nums text-white/70">{formatDuration(duration)}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Captions overlay if enabled */}
-      {active && captionsEnabled && (reel.autoCaptions || reel.captionFileUrl) && (
-        <div className="pointer-events-none absolute bottom-[108px] left-1/2 z-20 max-w-[80%] -translate-x-1/2 rounded bg-black/70 px-3 py-1.5 text-center text-sm text-white backdrop-blur">
-          {reel.autoCaptions ? (
-            <p className="line-clamp-2">{reel.autoCaptions.slice(0, 120)}</p>
-          ) : (
-            <p>Captions enabled</p>
-          )}
-        </div>
-      )}
-
       <div className="reels-meta pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/35 to-transparent px-4 pt-24 pb-6 sm:px-6">
         <div className="pointer-events-auto flex items-end justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-3">
@@ -552,36 +362,18 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
                 <span className="block truncate text-xs text-white/60">@{reel.author.username}</span>
               </span>
             </Link>
-            {!isOwner ? <FollowButton userId={reel.author._id} following={reel.author?.isFollowing} /> : null}
+            {!isOwner ? (
+              <FollowButton userId={reel.author._id} following={reel.author?.isFollowing} />
+            ) : null}
             <div>
               <p className="text-[15px] font-semibold text-white">{reel.title}</p>
               {reel.caption ? (
-                <div className="mt-1">
-                  <p className={cn("text-sm text-white/75", !captionExpanded && "line-clamp-2")}>{reel.caption}</p>
-                  {reel.caption.length > 80 && (
-                    <button
-                      type="button"
-                      onClick={() => setCaptionExpanded(!captionExpanded)}
-                      className="mt-1 text-xs font-semibold text-white/60 hover:text-white"
-                    >
-                      {captionExpanded ? "Show less" : "More"}
-                    </button>
-                  )}
-                </div>
+                <p className="mt-1 line-clamp-3 text-sm text-white/75">{reel.caption}</p>
               ) : null}
-              {reel.tags && reel.tags.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {reel.tags.map((t) => (
-                    <span key={t} className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70">
-                      #{t}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-3 pb-2">
+          <div className="flex flex-col items-center gap-4 pb-2">
             <button
               type="button"
               onClick={handleLike}
@@ -617,22 +409,8 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
               onClick={() => setMuted((value) => !value)}
               className="grid size-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur-sm"
               aria-label={muted ? "Unmute" : "Mute"}
-              title="Sound preference carries between reels"
             >
               {muted ? <IconVolumeMute className="size-5" /> : <IconVolumeHigh className="size-5" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCaptionsEnabled((v) => !v)}
-              className={cn(
-                "grid size-12 place-items-center rounded-full backdrop-blur-sm",
-                captionsEnabled ? "bg-brand-600 text-white" : "bg-white/10 text-white"
-              )}
-              aria-label="Toggle captions"
-              title="Captions"
-            >
-              <IconCaption className="size-5" />
             </button>
 
             {isOwner ? (
@@ -660,7 +438,12 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
 
       {commentsOpen ? (
         <div className="absolute inset-0 z-30 flex flex-col justify-end bg-black/50">
-          <button type="button" className="flex-1" aria-label="Close comments" onClick={() => setCommentsOpen(false)} />
+          <button
+            type="button"
+            className="flex-1"
+            aria-label="Close comments"
+            onClick={() => setCommentsOpen(false)}
+          />
           <div className="max-h-[70%] overflow-y-auto rounded-t-2xl border-t border-line-600 bg-surface-900">
             <div className="flex items-center justify-between px-4 pt-4">
               <h2 className="text-sm font-semibold text-zinc-100">Comments</h2>
@@ -672,7 +455,13 @@ function ReelSlide({ reel, active, neighbor, viewerId }) {
                 Close
               </button>
             </div>
-            <Comments videoId={reel._id} open canModerate={isOwner} onCountChange={setCommentCount} className="px-4 py-4" />
+            <Comments
+              videoId={reel._id}
+              open
+              canModerate={isOwner}
+              onCountChange={setCommentCount}
+              className="px-4 py-4"
+            />
           </div>
         </div>
       ) : null}
