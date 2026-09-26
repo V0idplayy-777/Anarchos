@@ -6,16 +6,9 @@ import { useAuth } from "../lib/session";
 import { useToast } from "../lib/toast";
 import { uploadToConvex } from "../lib/upload";
 import { useRouter } from "../lib/router";
-import {
-  Avatar,
-  Button,
-  Field,
-  Input,
-  Modal,
-  PageHeader,
-  Textarea,
-} from "../components/ui";
+import { Avatar, Button, Field, Input, Modal, PageHeader, Textarea } from "../components/ui";
 import { IconCamera, IconDocument, IconLogout, IconShield, IconTrash, IconUser } from "../components/icons";
+import { useTheme } from "../lib/theme";
 
 const USERNAME_MAX = 24;
 const DISPLAY_MAX = 40;
@@ -242,6 +235,8 @@ export function SettingsPage() {
         </form>
       </section>
 
+      <AppearanceSection />
+
       <SecuritySection />
 
       <section aria-labelledby="legal-heading" className="card px-5 py-5">
@@ -317,6 +312,26 @@ export function SettingsPage() {
         />
       </Modal>
     </div>
+  );
+}
+
+function AppearanceSection() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <section aria-labelledby="appearance-heading" className="card px-5 py-5">
+      <h2 id="appearance-heading" className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+        <span className="text-base">{theme === "dark" ? "🌙" : "☀️"}</span> Appearance
+      </h2>
+      <p className="mt-3 text-sm text-zinc-400">Choose between dark and light theme. Dark is well-done; light broadens appeal for daytime use.</p>
+      <div className="mt-4 flex gap-2">
+        <Button variant={theme === "dark" ? "primary" : "secondary"} size="sm" onClick={() => setTheme("dark")}>
+          🌙 Dark
+        </Button>
+        <Button variant={theme === "light" ? "primary" : "secondary"} size="sm" onClick={() => setTheme("light")}>
+          ☀️ Light
+        </Button>
+      </div>
+    </section>
   );
 }
 
