@@ -1,5 +1,5 @@
 import { AuthProvider, useAuth } from "./lib/session";
-import { ToastProvider } from "./toast";
+import { ToastProvider } from "./lib/toast";
 import { RouterProvider, useSegments } from "./lib/router";
 import { convex } from "./lib/convex";
 import { ConvexProvider } from "convex/react";
