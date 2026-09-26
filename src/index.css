@@ -11,7 +11,7 @@
   --color-brand-600: #c4251f;
   --color-brand-700: #9c1c17;
 
-  /* Neutral surfaces — dark defaults */
+  /* Neutral surfaces */
   --color-surface-950: #08080a;
   --color-surface-900: #0c0c0f;
   --color-surface-850: #121215;
@@ -19,16 +19,6 @@
   --color-surface-700: #1f1f24;
   --color-line-700: #26262c;
   --color-line-600: #33333b;
-}
-
-:root.theme-light {
-  --color-surface-950: #f8f8f9;
-  --color-surface-900: #ffffff;
-  --color-surface-850: #f2f2f4;
-  --color-surface-800: #ececef;
-  --color-surface-700: #e4e4e7;
-  --color-line-700: #e4e4e7;
-  --color-line-600: #d4d4d8;
 }
 
 @layer base {
@@ -42,11 +32,6 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-  }
-
-  html.theme-light body {
-    background-color: #f8f8f9;
-    color: #18181b;
   }
 
   ::selection {
@@ -97,12 +82,6 @@
   background-color: var(--color-surface-900);
   border: 1px solid var(--color-line-700);
   border-radius: 14px;
-}
-
-html.theme-light .card {
-  background-color: #ffffff;
-  border-color: #e4e4e7;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 @utility hairline {
@@ -168,50 +147,4 @@ html.theme-light .card {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
-}
-
-/* Light theme overrides for common tailwind text colors */
-html.theme-light {
-  color-scheme: light;
-}
-html.theme-dark {
-  color-scheme: dark;
-}
-
-html.theme-light .text-zinc-50,
-html.theme-light .text-zinc-100 {
-  color: #18181b !important;
-}
-html.theme-light .text-zinc-200 {
-  color: #27272a !important;
-}
-html.theme-light .text-zinc-300 {
-  color: #3f3f46 !important;
-}
-html.theme-light .text-zinc-400 {
-  color: #71717a !important;
-}
-html.theme-light .text-zinc-500 {
-  color: #71717a !important;
-}
-html.theme-light .text-white {
-  color: #18181b !important;
-}
-html.theme-light .bg-black {
-  background-color: #ffffff !important;
-}
-html.theme-light .bg-surface-950\/60 {
-  background-color: rgba(255,255,255,0.7) !important;
-}
-
-/* Keep reels black even in light mode */
-html.theme-light .reels-scroller,
-html.theme-light .reels-slide,
-html.theme-light .bg-black.reels-slide {
-  background-color: #000 !important;
-}
-html.theme-light .reels-meta .text-white,
-html.theme-light .reels-meta .text-white\/75,
-html.theme-light .reels-meta .text-white\/60 {
-  color: white !important;
 }

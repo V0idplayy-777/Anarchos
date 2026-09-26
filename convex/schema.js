@@ -51,37 +51,18 @@ export default defineSchema({
     durationSeconds: v.optional(v.number()),
     authorId: v.id("users"),
     title: v.string(),
-    titleSearch: v.optional(v.string()), // lowercased title for search
     caption: v.optional(v.string()),
-    captionSearch: v.optional(v.string()), // lowercased caption
     contentType: v.string(),
     sizeBytes: v.number(),
     likeCount: v.number(),
     commentCount: v.number(),
     status: v.string(), // "published" | "removed"
     kind: v.optional(v.string()), // "video" | "reel" — missing treated as "video"
-    // Tags / Categories
-    tags: v.optional(v.array(v.string())),
-    category: v.optional(v.string()),
-    // Captions
-    captionFileStorageId: v.optional(v.id("_storage")),
-    autoCaptions: v.optional(v.string()),
-    // Analytics
-    viewCount: v.optional(v.number()),
-    totalWatchTimeSeconds: v.optional(v.number()),
-    completionCount: v.optional(v.number()),
-    // For trending score cache (optional)
-    trendingScore: v.optional(v.number()),
-    lastTrendingAt: v.optional(v.number()),
     createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
   })
     .index("by_author_created", ["authorId", "createdAt"])
     .index("by_status_created", ["status", "createdAt"])
-    .index("by_kind_status_created", ["kind", "status", "createdAt"])
-    .index("by_category", ["category", "status", "createdAt"])
-    .index("by_viewCount", ["status", "viewCount"])
-    .index("by_trending", ["status", "trendingScore"]),
+    .index("by_kind_status_created", ["kind", "status", "createdAt"]),
 
   follows: defineTable({
     followerId: v.id("users"),
@@ -104,24 +85,10 @@ export default defineSchema({
     authorId: v.id("users"),
     text: v.string(),
     status: v.string(), // "visible" | "removed"
-    // Replies & pinning
-    parentCommentId: v.optional(v.id("comments")),
-    likeCount: v.optional(v.number()),
-    pinned: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_video_status_created", ["videoId", "status", "createdAt"])
-    .index("by_author_created", ["authorId", "createdAt"])
-    .index("by_parent", ["parentCommentId", "status", "createdAt"])
-    .index("by_video_pinned", ["videoId", "pinned"]),
-
-  commentLikes: defineTable({
-    commentId: v.id("comments"),
-    userId: v.id("users"),
-    createdAt: v.number(),
-  })
-    .index("by_comment_user", ["commentId", "userId"])
-    .index("by_user_created", ["userId", "createdAt"]),
+    .index("by_author_created", ["authorId", "createdAt"]),
 
   conversations: defineTable({
     // userA.id is always the lexicographically smaller id so the pair is unique
@@ -145,20 +112,6 @@ export default defineSchema({
   })
     .index("by_conversation_created", ["conversationId", "createdAt"])
     .index("by_sender", ["senderId"]),
-
-  videoViews: defineTable({
-    videoId: v.id("videos"),
-    userId: v.optional(v.id("users")),
-    // For anonymous views we store a fingerprint hash if provided
-    fingerprint: v.optional(v.string()),
-    watchTimeSeconds: v.optional(v.number()),
-    completed: v.optional(v.boolean()),
-    // To filter obvious repeated / automated activity, we store ip-like key? Use fingerprint + time window
-    createdAt: v.number(),
-  })
-    .index("by_video_created", ["videoId", "createdAt"])
-    .index("by_video_user", ["videoId", "userId"])
-    .index("by_user_created", ["userId", "createdAt"]),
 
   // Login / signup throttling so credential stuffing is not free.
   authAttempts: defineTable({
